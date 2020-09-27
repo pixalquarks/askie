@@ -10,7 +10,8 @@ import configs
 from random import choice
 # from threading import hread
 
-TOKEN = str(os.environ.get("TOKEN"))
+#TOKEN = str(os.environ.get("TOKEN"))
+TOKEN = "NzU5NDI4OTczNjgyNzUzNTg3.X29XWA.OXjf69RqIYGqFCg6Gg-nQm9sYIQ"
 dictn = {}
 random_search_done = False
 channel_id_waifu = 758935977711370270
@@ -33,12 +34,12 @@ async def on_ready():
 @client.command()
 async def setchannel(ctx,name:str):
 	global channel_id_waifu
-	global channel_id_doujin
+	global channel_id_doujins
 	if check_authority(ctx):
 		if name == 'waifu':
 			channel_id_waifu = ctx.channel.id
 		elif name == 'doujin':
-			channel_id_doujin = ctx.channel.id
+			channel_id_doujins = ctx.channel.id
 		await ctx.send("Done")
 
 def isOnii_chan(ctx):
