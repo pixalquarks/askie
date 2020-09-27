@@ -58,7 +58,7 @@ class NHentaiOP:
                     return_object["cover"] = await new_resp.read()
                 for i in info_box.find('h1', class_='title').find_all('span'):
                     return_object["title"].append(i.text)
-                return_object["secondary_title"] = title_section.text if (title_section := info_box.find('h2', class_='title')) is not None else ''
+                #return_object["secondary_title"] = title_section.text if (title_section := info_box.find('h2', class_='title')) is not None else ''
 
                 tags = info_box.find_all('div', class_='tag-container field-name')
                 for item in tags:
