@@ -10,11 +10,11 @@ import configs
 from random import choice
 # from threading import hread
 
-#TOKEN = str(os.environ.get("TOKEN"))
-TOKEN = "NzU5NDI4OTczNjgyNzUzNTg3.X29XWA.OXjf69RqIYGqFCg6Gg-nQm9sYIQ"
+TOKEN = str(os.environ.get("TOKEN"))
+#TOKEN = "NzU5NDI4OTczNjgyNzUzNTg3.X29XWA.OXjf69RqIYGqFCg6Gg-nQm9sYIQ"
 dictn = {}
 random_search_done = False
-channel_id_waifu = 758935977711370270
+channel_id_waifu = None
 channel_id_doujins = None
 nhentai = Nhentai()
 doujin = {}
@@ -41,6 +41,16 @@ async def setchannel(ctx,name:str):
 		elif name == 'doujin':
 			channel_id_doujins = ctx.channel.id
 		await ctx.send("Done")
+
+@client.command()
+async def removechannel(ctx,name:str):
+	global channel_id_doujins
+	global channel_id_waifu
+	if check_authority(ctx):
+		if name == 'waifu':
+			channel_id_waifu = None
+		elif name == 'doujin':
+			channel_id_doujins = None
 
 def isOnii_chan(ctx):
 	if str(ctx.message.author) in configs.onii_chan_id:
@@ -236,7 +246,7 @@ async def doujin(ctx, cmd:str, page=0):
 async def call_aski_chan(ctx):
 	if not isChannelNormal(ctx):
 		return await ctx.send("You cannot use this command from this channel")
-	filename = os.path.join(os.getcwd() + "\\Musics",choice(configs.Normal_onii_chan_sounds))
+	filename = os.path.join(os.getcwd() + "/Musics",choice(configs.Normal_onii_chan_sounds))
 	file = discord.File(filename,filename="onii_chan.mp3")
 	await ctx.send(file=file)
 
@@ -245,7 +255,7 @@ async def call_aski_daisuki(ctx):
 	if not isChannelNormal(ctx):
 		return await ctx.send("You cannot use this command from this channel")
 	#v = random.choice(configs.Daisuki)
-	filename = os.path.join(os.getcwd() + "\\Musics",choice(configs.Daisuki))
+	filename = os.path.join(os.getcwd() + "/Musics",choice(configs.Daisuki))
 	file = discord.File(filename,filename="daisuki.mp3")
 	await ctx.send(file=file)
 
@@ -255,7 +265,7 @@ async def call_me_onii(ctx):
 		return await ctx.send("You cannot use this command from this channel")
 	if not isOnii_chan(ctx):
 		return await ctx.send("You are not my special onii-chan.  Baaakaaa...")
-	filename = os.path.join(os.getcwd() + "\\Musics",configs.Onii_chan_song)
+	filename = os.path.join(os.getcwd() + "/Musics",configs.Onii_chan_song)
 	file = discord.File(filename,filename="onii-chan-song.mp3")
 	await ctx.send(file=file)
 
@@ -265,7 +275,7 @@ async def special_service(ctx):
 		return await ctx.send("You cannot use this command from this channel")
 	if not isOnii_chan(ctx):
 		return await ctx.send("You are not my special onii-chan.  Baaakaaa...")
-	filename = os.path.join(os.getcwd() + "\\Musics",configs.Onii_chan_special)
+	filename = os.path.join(os.getcwd() + "/Musics",configs.Onii_chan_special)
 	file = discord.File(filename,filename="special.mp3")
 	await ctx.send(file=file)
 
