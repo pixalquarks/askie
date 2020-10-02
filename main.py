@@ -8,10 +8,11 @@ import json
 from NhentaiManager import NHentaiOP as Nhentai
 import configs
 from random import choice
+import MongoDB
 # from threading import hread
 
 TOKEN = str(os.environ.get("TOKEN"))
-#TOKEN = "NzU5NDI4OTczNjgyNzUzNTg3.X29XWA.OXjf69RqIYGqFCg6Gg-nQm9sYIQ"
+TOKEN = "NzU5NDI4OTczNjgyNzUzNTg3.X29XWA.OXjf69RqIYGqFCg6Gg-nQm9sYIQ"
 dictn = {}
 random_search_done = False
 channel_id_waifu = None
@@ -22,6 +23,7 @@ counter = 0
 read_ = False
 disable_doujin = False
 current_doujin_manager = 0
+db = MongoDB.Database()
 
 
 
@@ -108,6 +110,111 @@ def isChannelDoujin(ctx):
 	if ctx.channel.id == channel_id_doujins:
 		return True
 	return False
+
+async def manageWaifu(ctx,data:dict):
+	message = f"""Name : {data["waifu"]["name"]}
+				  Anime : {data["waifu"]["appearances"][0]["name"]}
+				  Age  : {data["waifu"]["age"]} Height : {data["waifu"]["height"]}
+				  Popolarity Rank : {data["waifu"]["popularity_rank"]} Likes : {data["waifu"]["likes"]}
+				  Bust : {data["waifu"]["bust"]} Waist : {data["waifu"]["waist"]} Hip : {data["waifu"]["hip"]}
+				  URl : {data["waifu"]["url"]}"""
+	async with aiohttp.ClientSession() as session:
+		async with session.get(data["waifu"]["display_picture"]) as resp:
+			with io.BytesIO(await resp.read()) as data:
+				await ctx.send(message,file=discord.File(data,"waifu_img.jpeg"))
+
+
+
+@client.command(aliases=["waifustatus","Waifustatus"])
+async def find_waifu_by_status(ctx,status:str):
+	if not isChannelNormal(ctx):
+		return await ctx.send("You can only use this commnad from gimme_a_waifu channel. Don't spam this here to avoid a ban")
+	data = None
+	print(status)
+	if status in ("legendary","superrare","common","special"):
+		data = db.waifu_status(status)
+		print("Yes here")
+		return await manageWaifu(ctx,data)
+	else:
+		return await ctx.send(f"{name} isn't one of the specified status")
+
+@client.command(aliases=["Waifuname","waifuname"])
+async def get_waifu_by_name(ctx,name:str):
+	if not isChannelNormal(ctx):
+		return await ctx.send("You can only use this commnad from gimme_a_waifu channel. Don't spam this here to avoid a ban")
+	data = db.find_waifu(name)
+	ln = list(data)
+	lm = [i["waifu"]["name"] for i in ln]
+	def check(m):
+		return m.content.startswith("num")
+	if len(ln) == 0:
+		return await ctx.send(f"Couldn't find a match for query {name}")
+	else:
+		message_ = f"We have found a total of {len(ln)} matches\n"
+		names = "\t".join(lm[0:10])
+		_mess = message_ + names
+		await ctx.send(_mess)
+		num = await client.wait_for("message", check=check)
+		print(num.content)
+		try:
+			numb = int(num.content[3:])
+			print(numb)
+			id = ln[numb-1]["_id"]
+			print(id)
+			data = db.find_waifu_by_id(id)
+			return await manageWaifu(ctx,data)
+		except:
+			return await ctx.send("Sorry seems like you send a wrong entry")
+
+
+# SPECIAL CONTENT COMMAND "YES THESE ARE PERVERT ONLY STUFF" I GUESS I'M A CLOSET PERVERT
+
+async def manageEcchi(ctx,what:str):
+	data = None
+	if what == "imouto":
+		data = db.get_imouto()
+	elif what == "thick":
+		data = db.get_busty()
+	elif what == "milf":
+		data = db.get_milf()
+	elif what == "nsfw":
+		data = db.nsfw()
+	message = f"""Name : {data["waifu"]["name"]}
+				  Anime : {data["waifu"]["appearances"][0]["name"]}
+				  Age  : {data["waifu"]["age"]} Height : {data["waifu"]["height"]}
+				  Popolarity Rank : {data["waifu"]["popularity_rank"]} Likes : {data["waifu"]["likes"]}
+				  Bust : {data["waifu"]["bust"]} Waist : {data["waifu"]["waist"]} Hip : {data["waifu"]["hip"]}
+				  URl : {data["waifu"]["url"]}"""
+	async with aiohttp.ClientSession() as session:
+		async with session.get(data["waifu"]["display_picture"]) as resp:
+			with io.BytesIO(await resp.read()) as data:
+				await ctx.send(message,file=discord.File(data,"waifu_img.jpeg"))
+
+@client.command(aliases=["Thick","thick"])
+async def getThick(ctx):
+	if not isChannelNormal(ctx):
+		return await ctx.send("You can only use this commnad from gimme_a_waifu channel. Don't spam this here to avoid a ban")
+	await manageEcchi(ctx,"thick")
+
+@client.command(aliases=["imouto","Imouto"])
+async def getImouto(ctx):
+	if not isChannelNormal(ctx):
+		return await ctx.send("You can only use this commnad from gimme_a_waifu channel. Don't spam this here to avoid a ban")
+	await manageEcchi(ctx,"imouto")
+
+@client.command(aliases=["milf","Milf"])
+async def getMilf(ctx):
+	if not isChannelNormal(ctx):
+		return await ctx.send("You can only use this commnad from gimme_a_waifu channel. Don't spam this here to avoid a ban")
+	await manageEcchi(ctx,"milf")
+
+@client.command()
+async def nsfw(ctx):
+	if not isChannelNormal(ctx):
+		return await ctx.send("You can only use this commnad from gimme_a_waifu channel. Don't spam this here to avoid a ban")
+	await manageEcchi(ctx,"nsfw")
+
+
 
 @client.command(aliases=["PING","Ping"])
 async def ping(ctx):
@@ -242,7 +349,7 @@ async def doujin(ctx, cmd:str, page=0):
 		doujin = {}
 		return await ctx.send("Deleted the previous doujin. Use command $getDoujin <id> to find a new one")
 
-@client.command(aliases=["imouto","aski-chan"])
+@client.command(aliases=["askie","aski-chan"])
 async def call_aski_chan(ctx):
 	if not isChannelNormal(ctx):
 		return await ctx.send("You cannot use this command from this channel")
