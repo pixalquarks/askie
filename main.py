@@ -234,7 +234,7 @@ async def manageEcchi(ctx,what:str):
 		data = db.get_milf()
 	elif what == "nsfw":
 		data = db.nsfw()
-	waifustats = {"Name":data["waifu"]["name"],"id":data["_id"]}
+	waifustats = {"name": data["waifu"]["name"],"data" :{"id":data["_id"],"level":1,"status":status}}
 	message = f"""Name : {data["waifu"]["name"]}
 				  Anime : {data["waifu"]["appearances"][0]["name"]}
 				  Age  : {data["waifu"]["age"]} Height : {data["waifu"]["height"]}
