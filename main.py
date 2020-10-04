@@ -1,6 +1,7 @@
 import os
 import io
 import aiohttp
+import asyncio
 import discord
 from discord.ext import commands
 from bs4 import BeautifulSoup
@@ -9,10 +10,11 @@ from NhentaiManager import NHentaiOP as Nhentai
 import configs
 from random import choice
 import MongoDB
-# from threading import hread
+import dataconfig as dfc
+
 
 TOKEN = str(os.environ.get("TOKEN"))
-TOKEN = "NzU5NDI4OTczNjgyNzUzNTg3.X29XWA.OXjf69RqIYGqFCg6Gg-nQm9sYIQ"
+#TOKEN = "NzU5NDI4OTczNjgyNzUzNTg3.X29XWA.OXjf69RqIYGqFCg6Gg-nQm9sYIQ"
 dictn = {}
 random_search_done = False
 channel_id_waifu = None
@@ -32,6 +34,16 @@ client = commands.Bot(command_prefix=".")
 @client.event
 async def on_ready():
 	print("BOT CONNECTED")
+
+@client.command()
+async def setServer(ctx):
+	msg = dfc.checkServer(ctx)
+	await ctx.send(msg)
+
+@client.command()
+async def addme(ctx,nickname:str):
+	message = dfc.addPlayer(ctx,nickname)
+	await ctx.send(message)
 
 @client.command()
 async def setchannel(ctx,name:str):
@@ -58,6 +70,27 @@ def isOnii_chan(ctx):
 	if str(ctx.message.author) in configs.onii_chan_id:
 		return True
 	return False
+
+@client.command(aliases=["Stats","stats"])
+async def showStats(ctx):
+	msg = dfc.showPlayer(ctx.author.id)
+	await ctx.send(msg)
+
+@client.command(aliases=["Waifus","waifus"])
+async def showWaifu(ctx):
+	message, id_list = dfc.listWaifus(ctx.author.id)
+	def check(m):
+		return m.author.id == ctx.author.id and m.content.isdigit()
+	await ctx.send(message)
+	try:
+		ans = await client.wait_for("message",timeout=30.0,check=check)
+		id = id_list[int(ans.content)-1]
+		data = db.find_waifu_by_id(id)
+		return await displayWaifu(ctx,data)
+	except ValueError:
+		return await ("That's a wrong entry")
+	except asyncio.TimeoutError:
+		return
 
 @client.command()
 async def introduce(ctx):
@@ -111,18 +144,41 @@ def isChannelDoujin(ctx):
 		return True
 	return False
 
-async def manageWaifu(ctx,data:dict):
+async def manageWaifu(ctx,data:dict,status:str):
+	author = ctx.message.author.id
+	def check(m):
+		return m.author.id == author and m.content == '💖'
+	waifustats = {"name": data["waifu"]["name"],"data" :{"id":data["_id"],"level":1,"status":status}}
 	message = f"""Name : {data["waifu"]["name"]}
 				  Anime : {data["waifu"]["appearances"][0]["name"]}
 				  Age  : {data["waifu"]["age"]} Height : {data["waifu"]["height"]}
 				  Popolarity Rank : {data["waifu"]["popularity_rank"]} Likes : {data["waifu"]["likes"]}
 				  Bust : {data["waifu"]["bust"]} Waist : {data["waifu"]["waist"]} Hip : {data["waifu"]["hip"]}
-				  URl : {data["waifu"]["url"]}"""
+					React with a 💖 to claim your waifu"""
 	async with aiohttp.ClientSession() as session:
 		async with session.get(data["waifu"]["display_picture"]) as resp:
 			with io.BytesIO(await resp.read()) as data:
 				await ctx.send(message,file=discord.File(data,"waifu_img.jpeg"))
+			try:
+				yes = await client.wait_for("message",timeout=70.0,check=check)
+				if yes:
+					print("Addin waifu")
+					msg = dfc.addWaifu(ctx,waifustats)
+					return await ctx.send(msg)
+			except asyncio.TimeoutError:
+				return await ctx.send(f"{ctx.author.name}, you were too late to catch her.")
 
+
+async def displayWaifu(ctx,data:dict):
+	message = f"""Name : {data["waifu"]["name"]}
+				  Anime : {data["waifu"]["appearances"][0]["name"]}
+				  Age  : {data["waifu"]["age"]} Height : {data["waifu"]["height"]}
+				  Popolarity Rank : {data["waifu"]["popularity_rank"]} Likes : {data["waifu"]["likes"]}
+				  Bust : {data["waifu"]["bust"]} Waist : {data["waifu"]["waist"]} Hip : {data["waifu"]["hip"]}"""
+	async with aiohttp.ClientSession() as session:
+		async with session.get(data["waifu"]["display_picture"]) as resp:
+			with io.BytesIO(await resp.read()) as data:
+				await ctx.send(message,file=discord.File(data,"waifu_img.jpeg"))
 
 
 @client.command(aliases=["waifustatus","Waifustatus"])
@@ -130,13 +186,12 @@ async def find_waifu_by_status(ctx,status:str):
 	if not isChannelNormal(ctx):
 		return await ctx.send("You can only use this commnad from gimme_a_waifu channel. Don't spam this here to avoid a ban")
 	data = None
-	print(status)
 	if status in ("legendary","superrare","common","special"):
 		data = db.waifu_status(status)
-		print("Yes here")
-		return await manageWaifu(ctx,data)
+		return await manageWaifu(ctx,data,status)
 	else:
 		return await ctx.send(f"{name} isn't one of the specified status")
+
 
 @client.command(aliases=["Waifuname","waifuname"])
 async def get_waifu_by_name(ctx,name:str):
@@ -147,6 +202,7 @@ async def get_waifu_by_name(ctx,name:str):
 	lm = [i["waifu"]["name"] for i in ln]
 	def check(m):
 		return m.content.startswith("num")
+
 	if len(ln) == 0:
 		return await ctx.send(f"Couldn't find a match for query {name}")
 	else:
@@ -154,22 +210,21 @@ async def get_waifu_by_name(ctx,name:str):
 		names = "\t".join(lm[0:10])
 		_mess = message_ + names
 		await ctx.send(_mess)
-		num = await client.wait_for("message", check=check)
-		print(num.content)
 		try:
+			num = await client.wait_for("message", check=check,timeout=7.0)
 			numb = int(num.content[3:])
-			print(numb)
 			id = ln[numb-1]["_id"]
-			print(id)
 			data = db.find_waifu_by_id(id)
-			return await manageWaifu(ctx,data)
-		except:
+			return await displayWaifu(ctx,data)
+		except Exception as e:
 			return await ctx.send("Sorry seems like you send a wrong entry")
 
 
 # SPECIAL CONTENT COMMAND "YES THESE ARE PERVERT ONLY STUFF" I GUESS I'M A CLOSET PERVERT
 
 async def manageEcchi(ctx,what:str):
+	def check(m):
+		return m.author.id == ctx.message.author.id and m.content== '💖'
 	data = None
 	if what == "imouto":
 		data = db.get_imouto()
@@ -179,16 +234,24 @@ async def manageEcchi(ctx,what:str):
 		data = db.get_milf()
 	elif what == "nsfw":
 		data = db.nsfw()
+	waifustats = {"Name":data["waifu"]["name"],"id":data["_id"]}
 	message = f"""Name : {data["waifu"]["name"]}
 				  Anime : {data["waifu"]["appearances"][0]["name"]}
 				  Age  : {data["waifu"]["age"]} Height : {data["waifu"]["height"]}
 				  Popolarity Rank : {data["waifu"]["popularity_rank"]} Likes : {data["waifu"]["likes"]}
 				  Bust : {data["waifu"]["bust"]} Waist : {data["waifu"]["waist"]} Hip : {data["waifu"]["hip"]}
-				  URl : {data["waifu"]["url"]}"""
+				  React with a 💖 to claim her as your waifu."""
 	async with aiohttp.ClientSession() as session:
 		async with session.get(data["waifu"]["display_picture"]) as resp:
 			with io.BytesIO(await resp.read()) as data:
 				await ctx.send(message,file=discord.File(data,"waifu_img.jpeg"))
+			try:
+				yes = await client.wait_for("message",timeout=70.0,check=check)
+				if yes:
+					msg = dfc.addWaifu(ctx,waifustats)
+					return await ctx.send(msg)
+			except asyncio.TimeoutError:
+				return await ctx.send(f"{ctx.author.name}, you were too late to catch her.")
 
 @client.command(aliases=["Thick","thick"])
 async def getThick(ctx):
