@@ -45,17 +45,16 @@ async def addme(ctx,nickname:str):
 	message = dfc.addPlayer(ctx,nickname)
 	await ctx.send(message)
 
-@client.command()
-async def setchannel(ctx,name:str):
-	global channel_id_waifu
-	global channel_id_doujins
-	if check_authority(ctx):
-		if name == 'waifu':
-			channel_id_waifu = ctx.channel.id
-		elif name == 'doujin':
-			channel_id_doujins = ctx.channel.id
-		await ctx.send("Done")
-
+#@client.command()
+#async def setchannel(ctx,name:str):
+#	global channel_id_waifu
+#	global channel_id_doujins
+#	if check_authority(ctx):
+#		if name == 'waifu':
+#			channel_id_waifu = ctx.channel.id
+#		elif name == 'doujin':
+#			channel_id_doujins = ctx.channel.id
+#
 @client.command()
 async def removechannel(ctx,name:str):
 	global channel_id_doujins
