@@ -6,7 +6,7 @@ import random
 class Database():
 
 	def __init__(self):
-		self.url = "mongodb://pixal_sama:WG9NQX2vtDd3PrEs@cluster0-shard-00-00.hy7pp.mongodb.net:27017,cluster0-shard-00-01.hy7pp.mongodb.net:27017,cluster0-shard-00-02.hy7pp.mongodb.net:27017/waifu_db?ssl=true&replicaSet=atlas-758ine-shard-0&authSource=admin&retryWrites=true&w=majority"
+		self.url = "" # replace with mongodb url
 		self.client = pymongo.MongoClient(self.url)
 		self.rank_tup = ("legendary","superrare","special","common")
 		print("DATABASE CONNECTED")
